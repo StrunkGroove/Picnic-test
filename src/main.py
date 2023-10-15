@@ -38,11 +38,17 @@ def cities_list(q: str = Query(description="Название города", defa
 
 
 @app.post('/users-list/', summary='')
-def users_list():
+def users_list(filter: str = Query(description="Сортировка", default=None)):
     """
     Список пользователей
     """
-    users = Session().query(User).all()
+    accept = ['asc', 'desc']
+    filter = filter.lower()
+    if filter not in accept:
+        raise HTTPException(status_code=400, detail=f"Разрешенные значения: {accept}")
+
+    users = Session().query(User).order_by(getattr(User.age, filter)()).all()
+
     return [{
         'id': user.id,
         'name': user.name,
