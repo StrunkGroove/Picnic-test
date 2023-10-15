@@ -99,14 +99,22 @@ def all_picnics(datetime: dt.datetime = Query(default=None, description='Вре�
 
 @app.get('/picnic-add/', summary='Picnic Add', tags=['picnic'])
 def picnic_add(city_id: int = None, datetime: dt.datetime = None):
-    p = Picnic(city_id=city_id, time=datetime)
+    if city_id is None or datetime is None:
+        raise HTTPException(status_code=404, detail=f"")
+    
     s = Session()
+    city = s.query(City).filter(City.id == city_id).scalar()
+
+    if city is None:
+        raise HTTPException(status_code=404, detail=f"Город с id={city_id} не найден")
+
+    p = Picnic(city_id=city_id, time=datetime)
     s.add(p)
     s.commit()
 
     return {
         'id': p.id,
-        'city': Session().query(City).filter(City.id == p.id).first().name,
+        'city': city.name,
         'time': p.time,
     }
 
