@@ -5,11 +5,13 @@ from database import engine, Session, Base, City, User, Picnic, PicnicRegistrati
 from external_requests import CheckCityExisting, GetWeatherRequest
 from models import RegisterUserRequest, UserModel
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import aliased
 
 app = FastAPI()
 
 
-@app.post('api/v1/city/append/', summary='Append City', description='Добавление города по его названию')
+@app.post('/api/v1/city/append/', summary='Append City', description='Добавление города по его названию')
 def append_city(city: str = Query(description="Название города", default=None)):
     if city is None:
         raise HTTPException(status_code=400, detail='Параметр city должен быть указан')
@@ -27,7 +29,7 @@ def append_city(city: str = Query(description="Название города", d
     return {'id': city_object.id, 'name': city_object.name, 'weather': city_object.weather}
 
 
-@app.get('api/v1/city/info/', summary='Get Cities')
+@app.get('/api/v1/city/info/', summary='Get Cities')
 def cities_list(q: str = Query(description="Название города", default=None)):
     """
     Получение информации о городе
@@ -38,7 +40,7 @@ def cities_list(q: str = Query(description="Название города", defa
     return [{'id': city.id, 'name': city.name, 'weather': city.weather} for city in cities]
 
 
-@app.get('api/v1/users/list/', summary='')
+@app.get('/api/v1/users/list/', summary='')
 def users_list(filter: str = Query(description="Сортировка", default=None)):
     """
     Список пользователей
@@ -58,7 +60,7 @@ def users_list(filter: str = Query(description="Сортировка", default=N
     } for user in users]
 
 
-@app.post('api/v1/user/register', summary='CreateUser', response_model=UserModel)
+@app.post('/api/v1/user/register', summary='CreateUser', response_model=UserModel)
 def register_user(user: RegisterUserRequest):
     """
     Регистрация пользователя
@@ -71,34 +73,42 @@ def register_user(user: RegisterUserRequest):
     return UserModel.from_orm(user_object)
 
 
-@app.get('api/v1/picnic/list/', summary='All Picnics', tags=['picnic'])
+@app.get('/api/v1/picnic/list/', summary='All Picnics', tags=['picnic'])
 def all_picnics(datetime: dt.datetime = Query(default=None, description='Время пикника (по умолчанию не задано)'),
                 past: bool = Query(default=True, description='Включая уже прошедшие пикники')):
     """
     Список всех пикников
     """
-    picnics = Session().query(Picnic)
-    if datetime is not None:
-        picnics = picnics.filter(Picnic.time == datetime)
-    if not past:
-        picnics = picnics.filter(Picnic.time >= dt.datetime.now())
+    s = Session()
+    city_alias = aliased(City)
+    picnics = (
+        s.query(Picnic, city_alias.name)
+        .join(city_alias, Picnic.city_id == city_alias.id)
+    )
+    
+    return picnics
 
-    return [{
-        'id': pic.id,
-        'city': Session().query(City).filter(City.id == pic.id).first().name,
-        'time': pic.time,
-        'users': [
-            {
-                'id': pr.user.id,
-                'name': pr.user.name,
-                'surname': pr.user.surname,
-                'age': pr.user.age,
-            }
-            for pr in Session().query(PicnicRegistration).filter(PicnicRegistration.picnic_id == pic.id)],
-    } for pic in picnics]
+    # if datetime is not None:
+    #     picnics = picnics.filter(Picnic.time == datetime)
+    # if not past:
+    #     picnics = picnics.filter(Picnic.time >= dt.datetime.now())
+
+    # return [{
+    #     'id': pic.id,
+    #     'city': Session().query(City).filter(City.id == pic.city_id).first().name,
+    #     'time': pic.time,
+    #     'users': [
+    #         {
+    #             'id': pr.user.id,
+    #             'name': pr.user.name,
+    #             'surname': pr.user.surname,
+    #             'age': pr.user.age,
+    #         }
+    #         for pr in Session().query(PicnicRegistration).filter(PicnicRegistration.picnic_id == pic.id)],
+    # } for pic in picnics]
 
 
-@app.post('api/v1/picnic/add/', summary='Picnic Add', tags=['picnic'])
+@app.post('/api/v1/picnic/add/', summary='Picnic Add', tags=['picnic'])
 def picnic_add(city_id: int = None, datetime: dt.datetime = None):
     if city_id is None or datetime is None:
         raise HTTPException(status_code=404, detail=f"Все поля должны быть заполнены!")
@@ -120,7 +130,7 @@ def picnic_add(city_id: int = None, datetime: dt.datetime = None):
     }
 
 
-@app.post('api/v1/picnic/register/', summary='Picnic Registration', tags=['picnic'])
+@app.post('/api/v1/picnic/register/', summary='Picnic Registration', tags=['picnic'])
 def register_to_picnic(name: str = None, city_name: str = None, datetime: dt.datetime = None):
     if name is None or city_name is None or datetime is None:
         raise HTTPException(status_code=422, detail=f"Все поля должны быть заполнены!")
