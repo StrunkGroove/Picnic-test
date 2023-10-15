@@ -1,8 +1,10 @@
 import datetime as dt
 from fastapi import FastAPI, HTTPException, Query
+from sqlalchemy import and_
 from database import engine, Session, Base, City, User, Picnic, PicnicRegistration
 from external_requests import CheckCityExisting, GetWeatherRequest
 from models import RegisterUserRequest, UserModel
+from sqlalchemy.orm.exc import NoResultFound
 
 app = FastAPI()
 
@@ -100,7 +102,7 @@ def all_picnics(datetime: dt.datetime = Query(default=None, description='Вре�
 @app.get('/picnic-add/', summary='Picnic Add', tags=['picnic'])
 def picnic_add(city_id: int = None, datetime: dt.datetime = None):
     if city_id is None or datetime is None:
-        raise HTTPException(status_code=404, detail=f"")
+        raise HTTPException(status_code=404, detail=f"Все поля должны быть заполнены!")
     
     s = Session()
     city = s.query(City).filter(City.id == city_id).scalar()
@@ -120,11 +122,37 @@ def picnic_add(city_id: int = None, datetime: dt.datetime = None):
 
 
 @app.get('/picnic-register/', summary='Picnic Registration', tags=['picnic'])
-def register_to_picnic(*_, **__,):
-    """
-    Регистрация пользователя на пикник
-    (Этот эндпойнт необходимо реализовать в процессе выполнения тестового задания)
-    """
-    # TODO: Сделать логику
-    return ...
+def register_to_picnic(name: str = None, city_name: str = None, datetime: dt.datetime = None):
+    if name is None or city_name is None or datetime is None:
+        raise HTTPException(status_code=422, detail=f"Все поля должны быть заполнены!")
 
+    with Session() as s:
+
+        result = s.query(User.id, User.name) \
+            .filter(User.name == name).first()
+        if result is None:
+            raise HTTPException(status_code=422, detail="Пользователь не найден.")
+
+        user_id, user_name = result
+
+        result = s.query(Picnic.id, City.name, Picnic.time) \
+            .filter(and_(
+                City.name == city_name,
+                Picnic.id == City.id,
+                Picnic.time == datetime
+            )).first()
+
+        if result is None:
+            raise HTTPException(status_code=422, detail="Пикник не найден.")
+
+        picnic_id, city_name, picnic_time = result
+
+        picnic_reg = PicnicRegistration(user_id=user_id, picnic_id=picnic_id)
+        s.add(picnic_reg)
+        s.commit()
+
+        return {
+            'user_name': user_name,
+            'city_name': city_name,
+            'picnic_time': picnic_time,
+        }
