@@ -1,10 +1,12 @@
 import os
+import logging
 
 # Использование httpx или aiohttp для асинхронности при увеличении числа пользователей
 import requests 
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger("uvicorn")
 
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 
@@ -14,6 +16,12 @@ class WeatherBase:
     Базовый классс для работы с Open Weather Map
     """
 
+    # def __init__(self, logger):
+    #     """
+    #     Инициализация класса
+    #     """
+    #     self.logger = logger
+        
     def get_params(self, city):
         """
         Собирает необходимые данные для запроса
@@ -43,7 +51,8 @@ class WeatherBase:
                 response.raise_for_status()
                 return response
         except requests.exceptions.RequestException as e:
-            # logging.error(f"Error fetching weather for {city}: {e}")
+            city = params.get('q')
+            logger.error(f"Error fetching weather for {city}: {e}")
             return None
 
 
