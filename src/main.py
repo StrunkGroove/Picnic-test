@@ -7,6 +7,7 @@ from models import RegisterUserRequest, UserModel
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql import func
 
 app = FastAPI()
 
@@ -80,32 +81,42 @@ def all_picnics(datetime: dt.datetime = Query(default=None, description='Вре�
     Список всех пикников
     """
     s = Session()
-    city_alias = aliased(City)
-    picnics = (
-        s.query(Picnic, city_alias.name)
-        .join(city_alias, Picnic.city_id == city_alias.id)
+
+    query = s.query(
+        Picnic,
+        City.name,
     )
-    
-    return picnics
+    if datetime:
+        query = query.filter(Picnic.time == datetime)
+    if past:
+        query = query.filter(Picnic.time >= dt.datetime.now())
+    query = query.join(City, Picnic.city_id == City.id)
+    picnics = query.all()
 
-    # if datetime is not None:
-    #     picnics = picnics.filter(Picnic.time == datetime)
-    # if not past:
-    #     picnics = picnics.filter(Picnic.time >= dt.datetime.now())
+    # FIXME Как сделать за 1 запрос на SQLAlchemy 
 
-    # return [{
-    #     'id': pic.id,
-    #     'city': Session().query(City).filter(City.id == pic.city_id).first().name,
-    #     'time': pic.time,
-    #     'users': [
-    #         {
-    #             'id': pr.user.id,
-    #             'name': pr.user.name,
-    #             'surname': pr.user.surname,
-    #             'age': pr.user.age,
-    #         }
-    #         for pr in Session().query(PicnicRegistration).filter(PicnicRegistration.picnic_id == pic.id)],
-    # } for pic in picnics]
+    picnic_id = [picnic.id for picnic, cities in picnics]
+
+    users = s.query(PicnicRegistration.user_id, User.name, PicnicRegistration.picnic_id) \
+        .join(User, User.id == PicnicRegistration.user_id) \
+        .filter(PicnicRegistration.picnic_id.in_(picnic_id)) \
+        .all()
+
+    dict = {}
+    for id in picnic_id:
+        dict[id] = []
+
+    for user_id, user_name, picnic_id in users:
+        dict[picnic_id].append({"user_id": user_id, "user_name": user_name})
+
+    return [
+        {
+            "picnic_id": picnic.id,
+            "picnic_date": picnic.time,
+            "cities": cities,
+            "user_data": dict.get(picnic.id),
+        } for picnic, cities in picnics
+    ]
 
 
 @app.post('/api/v1/picnic/add/', summary='Picnic Add', tags=['picnic'])
@@ -161,6 +172,8 @@ def register_to_picnic(name: str = None, city_name: str = None, datetime: dt.dat
         s.commit()
 
         return {
+            'id': picnic_reg.id,
+            'picnic_id': picnic_id,
             'user_name': user_name,
             'city_name': city_name,
             'picnic_time': picnic_time,
