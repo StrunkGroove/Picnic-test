@@ -1,19 +1,24 @@
 import datetime as dt
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Query
+from fastapi import FastAPI, HTTPException
 from sqlalchemy import and_
-from database import engine, Session, Base, City, User, Picnic, PicnicRegistration
-from external_requests import CheckCityExisting, GetWeatherRequest
-from models import RegisterUserRequest, UserModel
-from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import aliased
-from sqlalchemy.sql import func
+from database import Session, City, User, Picnic, PicnicRegistration
+from external_requests import CheckCityExisting
+from models import (
+    RegisterUserRequest, UserModel, CitiesOneResponse, CityAppendRequest, 
+    CitiesInfoRequest, UsersListRequest, PicnicsListRequest, 
+    PicnicAddRequest, PicnicRegRequest, PicnicAddResponse, PicnicRegResponse, 
+    CitiesOneResponse, CitiesInfoResponse, UsersListResponse, UserData, 
+    PicnicsListResponse, PicnicResponse
+)
+
 
 app = FastAPI()
 
 
 @app.post('/api/v1/city/append/', summary='Append City', description='Добавление города по его названию')
-def append_city(city: str = Query(description="Название города", default=None)):
+def append_city(request_model: CityAppendRequest):
+    city = request_model.city
     if city is None:
         raise HTTPException(status_code=400, detail='Параметр city должен быть указан')
     check = CheckCityExisting()
@@ -27,41 +32,41 @@ def append_city(city: str = Query(description="Название города", d
         s.add(city_object)
         s.commit()
 
-    return {'id': city_object.id, 'name': city_object.name, 'weather': city_object.weather}
+    return CitiesOneResponse(id=city_object.id, name=city_object.name, weather=city_object.weather)
 
 
 @app.get('/api/v1/city/info/', summary='Get Cities')
-def cities_list(q: str = Query(description="Название города", default=None)):
+def cities_list(q: str = Query(None, description="Название города")):
     """
     Получение информации о городе
     """
-    
     cities = Session().query(City).filter_by(name=q).all()
 
-    return [{'id': city.id, 'name': city.name, 'weather': city.weather} for city in cities]
+    return CitiesInfoResponse(
+        cities=[CitiesOneResponse(
+            id=city.id, name=city.name, weather=city.weather
+        ) for city in cities]
+    ) 
 
-
-@app.get('/api/v1/users/list/', summary='')
-def users_list(filter: str = Query(description="Сортировка", default=None)):
+@app.get('/api/v1/users/list/', summary='Get Users')
+def users_list(filter: str = Query(None, description="Сортировка")):
     """
     Список пользователей
     """
-    accept = ['asc', 'desc']
     filter = filter.lower()
+    accept = ['asc', 'desc']
     if filter not in accept:
         raise HTTPException(status_code=400, detail=f"Разрешенные значения: {accept}")
 
     users = Session().query(User).order_by(getattr(User.age, filter)()).all()
 
-    return [{
-        'id': user.id,
-        'name': user.name,
-        'surname': user.surname,
-        'age': user.age,
-    } for user in users]
+    return UsersListResponse(
+        users=[UserModel(
+            id=user.id, name=user.name, surname=user.surname, age=user.age
+        ) for user in users])
 
 
-@app.post('/api/v1/user/register', summary='CreateUser', response_model=UserModel)
+@app.post('/api/v1/user/register', summary='Create User', response_model=UserModel)
 def register_user(user: RegisterUserRequest):
     """
     Регистрация пользователя
@@ -75,11 +80,12 @@ def register_user(user: RegisterUserRequest):
 
 
 @app.get('/api/v1/picnic/list/', summary='All Picnics', tags=['picnic'])
-def all_picnics(datetime: dt.datetime = Query(default=None, description='Время пикника (по умолчанию не задано)'),
-                past: bool = Query(default=True, description='Включая уже прошедшие пикники')):
+def all_picnics(datetime: dt.datetime = Query(None, description='Время пикника (по умолчанию не задано)'), 
+                past: bool = Query(True, description='Включая уже прошедшие пикники')):
     """
     Список всех пикников
     """
+
     s = Session()
 
     query = s.query(
@@ -107,20 +113,23 @@ def all_picnics(datetime: dt.datetime = Query(default=None, description='Вре�
         dict[id] = []
 
     for user_id, user_name, picnic_id in users:
-        dict[picnic_id].append({"user_id": user_id, "user_name": user_name})
+        dict[picnic_id].append(UserData(user_id=user_id, user_name=user_name))
 
-    return [
-        {
-            "picnic_id": picnic.id,
-            "picnic_date": picnic.time,
-            "cities": cities,
-            "user_data": dict.get(picnic.id),
-        } for picnic, cities in picnics
-    ]
+    return PicnicsListResponse(
+        picnics=[PicnicResponse(
+            picnic_id=picnic.id,
+            picnic_date=picnic.time,
+            cities=cities,
+            user_data=dict.get(picnic.id),
+        ) for picnic, cities in picnics]
+    )
 
 
 @app.post('/api/v1/picnic/add/', summary='Picnic Add', tags=['picnic'])
-def picnic_add(city_id: int = None, datetime: dt.datetime = None):
+def picnic_add(request_model: PicnicAddRequest):
+    city_id = request_model.city_id
+    datetime = request_model.datetime
+
     if city_id is None or datetime is None:
         raise HTTPException(status_code=404, detail=f"Все поля должны быть заполнены!")
     
@@ -134,15 +143,15 @@ def picnic_add(city_id: int = None, datetime: dt.datetime = None):
     s.add(p)
     s.commit()
 
-    return {
-        'id': p.id,
-        'city': city.name,
-        'time': p.time,
-    }
+    return PicnicAddResponse(id=p.id, city=city.name, time=p.time)
 
 
 @app.post('/api/v1/picnic/register/', summary='Picnic Registration', tags=['picnic'])
-def register_to_picnic(name: str = None, city_name: str = None, datetime: dt.datetime = None):
+def register_to_picnic(request_model: PicnicRegRequest):
+    name = request_model.name
+    city_name = request_model.city_name
+    datetime = request_model.datetime
+
     if name is None or city_name is None or datetime is None:
         raise HTTPException(status_code=422, detail=f"Все поля должны быть заполнены!")
 
@@ -158,7 +167,7 @@ def register_to_picnic(name: str = None, city_name: str = None, datetime: dt.dat
         result = s.query(Picnic.id, City.name, Picnic.time) \
             .filter(and_(
                 City.name == city_name,
-                Picnic.id == City.id,
+                Picnic.city_id == City.id,
                 Picnic.time == datetime
             )).first()
 
@@ -171,10 +180,10 @@ def register_to_picnic(name: str = None, city_name: str = None, datetime: dt.dat
         s.add(picnic_reg)
         s.commit()
 
-        return {
-            'id': picnic_reg.id,
-            'picnic_id': picnic_id,
-            'user_name': user_name,
-            'city_name': city_name,
-            'picnic_time': picnic_time,
-        }
+        return PicnicRegResponse(
+            id=picnic_reg.id,
+            picnic_id=picnic_id,
+            user_name=user_name,
+            city_name=city_name,
+            picnic_time=picnic_time
+        )
