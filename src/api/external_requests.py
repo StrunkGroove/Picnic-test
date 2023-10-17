@@ -2,8 +2,10 @@ import os
 import logging
 
 # Использование httpx или aiohttp для асинхронности при увеличении числа пользователей
-import requests 
+import requests
+
 from dotenv import load_dotenv
+
 
 load_dotenv()
 logger = logging.getLogger("uvicorn")
@@ -15,12 +17,6 @@ class WeatherBase:
     """
     Базовый классс для работы с Open Weather Map
     """
-
-    # def __init__(self, logger):
-    #     """
-    #     Инициализация класса
-    #     """
-    #     self.logger = logger
         
     def get_params(self, city):
         """

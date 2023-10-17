@@ -4,6 +4,8 @@ WORKDIR /code
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
+ENV PYTHONPATH=/src
+
 VOLUME /src/logs
 
 COPY src .
