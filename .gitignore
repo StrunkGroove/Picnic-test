@@ -4,3 +4,4 @@
 postgres/
 test.db
 .env
+logs/
