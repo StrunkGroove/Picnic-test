@@ -1,3 +1,22 @@
+# Для старта
+```nano .env```
+```
+POSTGRES_USER=your_username
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=your_database
+POSTGRES_PORT=5432
+POSTGRES_HOST=postgres
+
+WEATHER_API_KEY=99ba78ee79a2a24bc507362c5288a81b
+```
+
+```docker-compose up --build```
+
+Запустить тесты
+```docker exec -it picnic-test-backend-1 bash```
+```pytest tests/test_users.py```
+
+
 # Возможные проблемы при масштабировании проекта
 
  - Ограничение на использование Weather API при увеличении числа пользователей
