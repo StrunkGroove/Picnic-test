@@ -1,32 +1,30 @@
 from fastapi import Query
+from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import APIRouter
 
-from database.database import Session
 from database.models import User
+from database.database import get_db, DBSession
 from schemas.requests import RegisterUserRequest
-from schemas.response import (
-    UserModel, UsersListResponse, 
-)
+from schemas.response import UserModel, UsersListResponse
 
 
 router = APIRouter()
 
-@router.post('/user/register/', summary='Create User', response_model=UserModel)
-def register_user(user: RegisterUserRequest):
+@router.post('/register/', summary='Create User', response_model=UserModel)
+def register_user(user: RegisterUserRequest, db: DBSession = Depends(get_db)):
     """
     Регистрация пользователя
     """
     user_object = User(**user.dict())
-    s = Session()
-    s.add(user_object)
-    s.commit()
+    db.add(user_object)
+    db.commit()
 
     return UserModel.from_orm(user_object)
 
 
-@router.get('/users/list/', summary='Get Users', response_model=UsersListResponse)
-def users_list(filter: str = Query(None, description="Сортировка")):
+@router.get('/list/', summary='Get Users', response_model=UsersListResponse)
+def users_list(filter: str = Query(None, description="Сортировка"), db: DBSession = Depends(get_db)):
     """
     Список пользователей
     """
@@ -35,7 +33,7 @@ def users_list(filter: str = Query(None, description="Сортировка")):
     if filter not in accept:
         raise HTTPException(status_code=400, detail=f"Разрешенные значения: {accept}")
 
-    users = Session().query(User).order_by(getattr(User.age, filter)()).all()
+    users = db.query(User).order_by(getattr(User.age, filter)()).all()
 
     return UsersListResponse(
         users=[UserModel(

@@ -7,6 +7,6 @@ from api.endpoints.v1.city import router as city_router
 
 app = FastAPI()
 
-app.include_router(users_router, prefix="/api/v1", tags=["Users"])
-app.include_router(picnic_router, prefix="/api/v1", tags=["Picnic"])
-app.include_router(city_router, prefix="/api/v1", tags=["City"])
+app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(picnic_router, prefix="/api/v1/picnic", tags=["Picnic"])
+app.include_router(city_router, prefix="/api/v1/city", tags=["City"])
