@@ -1,5 +1,7 @@
 # Для старта
-```nano .env```
+```
+nano .env
+```
 ```
 POSTGRES_USER=your_username
 POSTGRES_PASSWORD=your_password
@@ -9,10 +11,14 @@ POSTGRES_HOST=postgres
 
 WEATHER_API_KEY=99ba78ee79a2a24bc507362c5288a81b
 ```
+### Произвести миграции
+```docker exec -it picnic-test-backend-1 bash```
 
+
+### Запуск докера
 ```docker-compose up --build```
 
-Запустить тесты
+### Запустить тесты
 ```docker exec -it picnic-test-backend-1 bash```
 ```pytest tests/test_users.py```
 
