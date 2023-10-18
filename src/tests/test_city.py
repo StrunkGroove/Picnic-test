@@ -1,9 +1,8 @@
 import sys
 sys.path.insert(0, '../')
-import datetime as dt
 
 from database.models import City
-from database.support_func import append_city
+from support_func import append_city
 from config import client, TestingDBSession
 
 

@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '../')
 
 from database.models import User
-from database.support_func import append_user
+from support_func import append_user
 from config import client, TestingDBSession
 
 
@@ -34,12 +34,10 @@ def test_register_user():
 
 
 def test_get_user_list():
-    data = {
-        "name": "string",
-        "surname": "string",
-        "age": 0
-    }
-    append_user(data)
+    append_user("string4", 10)
+    append_user("string3", 15)
+    append_user("string2", 5)
+    append_user("string1", 20)
 
     def check(filter: str, reverse: bool):
         response = client.get(f"api/v1/users/list/?filter={filter}")

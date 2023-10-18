@@ -1,9 +1,8 @@
 import sys
 sys.path.insert(0, '../')
-import datetime as dt
 
 from database.models import Picnic, City, User
-from database.support_func import append_city, append_user, append_picnic
+from support_func import append_city, append_user, append_picnic
 from config import client, TestingDBSession
 
 
@@ -35,11 +34,11 @@ def test_add_picnic():
 def test_picnic_list():
     append_city('Tyumen')
     append_city('Moscow')
-    append_city('Omsc')
+    append_city('Omsk')
 
-    append_picnic('1', '2023-10-17T11:47:07.599Z')
-    append_picnic('2', '2023-10-17T11:60:07.599Z')
-    append_picnic('3', '2023-10-17T11:00:07.599Z')
+    append_picnic(1, '2023-10-17T11:47:07.599Z')
+    append_picnic(2, '2023-10-17T11:48:07.599Z')
+    append_picnic(3, '2023-10-17T11:00:07.599Z')
 
     response = client.get("/api/v1/picnic/list/?past=False")
     assert response.status_code == 200
@@ -71,7 +70,7 @@ def test_picnic_register():
 
     append_city(data_1['city_name'])
     append_picnic('1', data_1['datetime'])
-    append_user(data_1['name'])
+    append_user(data_1['name'], 10)
 
     response = client.post("/api/v1/picnic/register/")
     assert response.status_code == 422
