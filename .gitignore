@@ -4,4 +4,4 @@
 postgres/
 test.db
 .env
-logs/
+logs.txt

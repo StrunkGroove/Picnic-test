@@ -9,7 +9,6 @@ from schemas.requests import CityAppendRequest
 from schemas.response import CitiesOneResponse, CitiesInfoResponse
 from api.external_requests import CheckCityExisting
 
-
 router = APIRouter()
 
 @router.post('/append/', summary='Append City', response_model=CitiesOneResponse, description='Добавление города по его названию')
