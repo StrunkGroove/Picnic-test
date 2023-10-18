@@ -19,11 +19,14 @@ SQLALCHEMY_DATABASE_URI = (
 )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URI)
+
 DBSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-Base.metadata.create_all(bind=engine)
+def init_db():
+    from database.models import City, User, Picnic, PicnicRegistration
+    Base.metadata.create_all(bind=engine)
 
 def get_db():
     db = DBSession()
