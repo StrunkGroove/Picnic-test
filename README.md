@@ -11,11 +11,6 @@ POSTGRES_HOST=postgres
 
 WEATHER_API_KEY=99ba78ee79a2a24bc507362c5288a81b
 ```
-### Произвести миграции
-```
-docker exec -it picnic-test-backend-1 bash
-```
-
 
 ### Запуск докера
 ```
@@ -27,7 +22,7 @@ docker-compose up --build
 docker exec -it picnic-test-backend-1 bash
 ```  
 ```
-pytest tests/test_users.py
+pytest tests/test_city.py && pytest tests/test_picnic.py && pytest tests/test_users.py
 ```
 
 
