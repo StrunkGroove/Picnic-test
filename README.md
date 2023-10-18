@@ -22,7 +22,7 @@ docker-compose up --build
 docker exec -it picnic-test-backend-1 bash
 ```  
 ```
-pytest tests/test_city.py && pytest tests/test_picnic.py && pytest tests/test_users.py
+cd tests/ && pytest test_picnic.py && pytest test_city.py && pytest test_users.py
 ```
 
 
